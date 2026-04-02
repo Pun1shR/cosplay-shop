@@ -134,3 +134,33 @@ button {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* Make grid responsive on mobile */
+@media (max-width: 768px) {
+  /* target grid and store wrapper dynamically */
+  div[style*="max-width: 1400px"] {
+    flex-direction: column !important;
+    padding: 1rem !important;
+  }
+  
+  /* fix right column cart sticking */
+  div[style*="flex: 0 0 350px"] {
+    flex: none !important;
+    width: 100% !important;
+  }
+
+  /* fix results grid columns */
+  div[style*="grid-template-columns"] {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important;
+    gap: 1rem !important;
+  }
+
+  /* scale down card images and texts */
+  div[style*="height: 180px"] {
+    height: 120px !important;
+  }
+  
+  h3 {
+    font-size: 1rem !important;
+  }
+}

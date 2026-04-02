@@ -27,9 +27,9 @@ export default function LandingPage() {
           margin: '0 auto'
         }}>
           <img 
-            src="https://media.tenor.com/W-F9Z-wBwK0AAAAi/navia-genshin-impact.gif" 
-            alt="Welcome kiss from Navia" 
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+            src="/images/logo.png" 
+            alt="Cosplay Shop Logo" 
+            style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '20px' }} 
           />
         </div>
       </div>
