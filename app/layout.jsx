@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "CosplayForge - Premium Cosplay Materials",
+  title: "House of Purplepaw",
   description: "Find the best foam, paints, fabric, and crafting supplies for your next cosplay.",
 };
 
