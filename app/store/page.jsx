@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Search, ShoppingCart, Sparkles, Plus, Trash2 } from 'lucide-react';
+import { Search, ShoppingCart, Sparkles, Plus, Minus, Trash2 } from 'lucide-react';
 import '../globals.css';
+
+const formatPrice = (price) => Number(price).toLocaleString('en-IN');
 
 const MOCK_DATA = [
   // FABRICS
@@ -60,29 +62,50 @@ export default function Page() {
     setDensitySelections(prev => ({ ...prev, [id]: density }));
   };
 
-  const addToCart = (item) => {
+  const addToCart = (item, e) => {
     let finalItem = { ...item };
+    let cartId = item.id;
 
     if (item.hasDensity) {
       const selectedDensity = densitySelections[item.id] || 'LD';
+      cartId = `${item.id}-${selectedDensity}`;
       finalItem = {
         ...item,
-        cartId: `${item.id}-${selectedDensity}`,
+        cartId: cartId,
         name: `${item.name} - ${selectedDensity}`,
         price: selectedDensity === 'LD' ? item.priceLD : item.priceHD
       };
     } else {
-      finalItem.cartId = item.id;
+      finalItem.cartId = cartId;
     }
 
-    setCart([...cart, finalItem]);
+    setCart(prevCart => {
+      const existing = prevCart.find(i => i.cartId === finalItem.cartId);
+      if (existing) {
+        return prevCart.map(i => i.cartId === finalItem.cartId ? { ...i, quantity: i.quantity + 1 } : i);
+      }
+      return [...prevCart, { ...finalItem, quantity: 1 }];
+    });
+
   };
 
-  const removeFromCart = (indexToRemove) => {
-    setCart(cart.filter((_, idx) => idx !== indexToRemove));
+  const decrementFromCart = (cartId) => {
+    setCart(prevCart => {
+      const existing = prevCart.find(i => i.cartId === cartId);
+      if (existing && existing.quantity > 1) {
+        return prevCart.map(i => i.cartId === cartId ? { ...i, quantity: i.quantity - 1 } : i);
+      }
+      return prevCart.filter(i => i.cartId !== cartId);
+    });
   };
 
-  const cartTotal = cart.reduce((sum, item) => sum + item.price, 0).toFixed(2);
+  const removeFromCart = (cartId) => {
+    setCart(cart.filter(item => item.cartId !== cartId));
+  };
+
+  const cartTotalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const cartTotal = formatPrice(cartTotalAmount);
+  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleCheckout = () => {
     if (cart.length === 0) return;
@@ -92,26 +115,32 @@ export default function Page() {
     
     let message = "Hello! I would like to place an order for:\n\n";
     
-    // Group items by name to handle quantities nicely
-    const itemCounts = {};
     cart.forEach(item => {
-      if (itemCounts[item.name]) {
-        itemCounts[item.name].quantity += 1;
-        itemCounts[item.name].total += item.price;
-      } else {
-        itemCounts[item.name] = { quantity: 1, price: item.price, total: item.price };
-      }
-    });
-
-    Object.keys(itemCounts).forEach(itemName => {
-      const { quantity, total } = itemCounts[itemName];
-      message += `${quantity}x ${itemName} = ₹${total}\n`;
+      message += `${item.quantity}x ${item.name} = ₹${formatPrice(item.price * item.quantity)}\n`;
     });
     
     message += `\n*Total Amount:* ₹${cartTotal}`;
     
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const getItemQuantity = (id) => {
+    const selectedDensity = densitySelections[id] || 'LD';
+    const item = MOCK_DATA.find(i => i.id === id);
+    const cartId = item.hasDensity ? `${id}-${selectedDensity}` : id;
+    const cartItem = cart.find(i => i.cartId === cartId);
+    return cartItem ? cartItem.quantity : 0;
+  };
+
+  const handleIncrementFromCard = (item, e) => {
+    addToCart(item, e);
+  };
+
+  const handleDecrementFromCard = (item) => {
+    const selectedDensity = densitySelections[item.id] || 'LD';
+    const cartId = item.hasDensity ? `${item.id}-${selectedDensity}` : item.id;
+    decrementFromCart(cartId);
   };
 
   return (
@@ -174,7 +203,7 @@ export default function Page() {
 
                   <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', flex: 1 }}>
                     <h3 style={{ fontSize: '1.2rem', marginBottom: '0.25rem', fontWeight: 600 }}>{item.name}</h3>
-                    <p style={{ color: 'var(--accent-primary)', fontSize: '1.25rem', marginBottom: '1rem', fontWeight: 600 }}>₹{currentPrice}</p>
+                    <p style={{ color: 'var(--accent-primary)', fontSize: '1.25rem', marginBottom: '1rem', fontWeight: 600 }}>₹{formatPrice(currentPrice)}</p>
 
                     {/* Density Selector for Foam */}
                     {item.hasDensity && (
@@ -195,13 +224,25 @@ export default function Page() {
                     )}
 
                     <div style={{ marginTop: 'auto' }}>
-                      <button
-                        onClick={() => addToCart(item)}
-                        className="button-primary"
-                        style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
-                      >
-                        <Plus size={18} /> Add to Cart
-                      </button>
+                      {getItemQuantity(item.id) > 0 ? (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(245, 183, 0, 0.1)', border: '1px solid var(--accent-primary)', borderRadius: '9999px', padding: '10px 16px' }}>
+                          <button onClick={() => handleDecrementFromCard(item)} style={{ background: 'transparent', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Minus size={20} />
+                          </button>
+                          <span style={{ fontWeight: 600, color: 'var(--accent-primary)', fontSize: '1.1rem' }}>{getItemQuantity(item.id)}</span>
+                          <button onClick={(e) => handleIncrementFromCard(item, e)} style={{ background: 'transparent', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Plus size={20} />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={(e) => addToCart(item, e)}
+                          className="button-primary"
+                          style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+                        >
+                          <Plus size={18} /> Add to Cart
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -213,30 +254,55 @@ export default function Page() {
 
       {/* Right Column - Shopping Cart */}
       <div style={{ flex: '0 0 350px' }} className="animate-fade-in stagger-3">
-        <div className="glass-panel" style={{ padding: '1.5rem', position: 'sticky', top: '2rem', minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
+        <div className="glass-panel" style={{ padding: '1.5rem', position: 'sticky', top: '2rem', height: 'calc(100vh - 4rem)', display: 'flex', flexDirection: 'column' }}>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)' }}>
             <ShoppingCart size={24} color="var(--accent-primary)" />
-            <h2 style={{ fontSize: '1.3rem', margin: 0 }}>Shopping Cart ({cart.length})</h2>
+            <h2 style={{ fontSize: '1.3rem', margin: 0 }}>Shopping Cart ({totalItems})</h2>
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+          <div style={{ 
+            flex: 1, 
+            overflowY: 'auto', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '1rem', 
+            marginBottom: '1.5rem', 
+            paddingRight: '0.5rem',
+            paddingBottom: '2rem', /* Extra padding for gradient reach */
+            WebkitMaskImage: 'linear-gradient(to bottom, black 85%, transparent 100%)',
+            maskImage: 'linear-gradient(to bottom, black 85%, transparent 100%)'
+          }}>
             {cart.length === 0 ? (
               <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '2rem' }}>Your cart is empty.</p>
             ) : (
-              cart.map((cartItem, idx) => (
-                <div key={`${cartItem.cartId}-${idx}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '0.75rem', borderRadius: '8px' }}>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: '0.9rem', fontWeight: 500, marginBottom: '0.2rem' }}>{cartItem.name}</p>
-                    <p style={{ color: 'var(--accent-primary)', fontSize: '0.9rem', fontWeight: 600 }}>₹{cartItem.price}</p>
+              cart.map((cartItem) => (
+                <div key={cartItem.cartId} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'rgba(0,0,0,0.3)', padding: '0.75rem', borderRadius: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontSize: '0.9rem', fontWeight: 500, marginBottom: '0.2rem', lineHeight: '1.3' }}>{cartItem.name}</p>
+                      <p style={{ color: 'var(--accent-primary)', fontSize: '0.9rem', fontWeight: 600 }}>₹{formatPrice(cartItem.price)}</p>
+                    </div>
+                    <button
+                      onClick={() => removeFromCart(cartItem.cartId)}
+                      style={{ background: 'transparent', color: 'var(--text-muted)', padding: '0.2rem', borderRadius: '4px', marginLeft: '0.5rem' }}
+                      title="Remove from Cart"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => removeFromCart(idx)}
-                    style={{ background: 'transparent', color: 'var(--text-muted)', padding: '0.5rem', borderRadius: '4px' }}
-                    title="Remove from Cart"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', padding: '0.25rem', width: 'fit-content' }}>
+                    <button onClick={() => decrementFromCart(cartItem.cartId)} style={{ background: 'transparent', color: 'white', padding: '0.2rem' }}>
+                      <Minus size={14} />
+                    </button>
+                    <span style={{ fontSize: '0.9rem', width: '20px', textAlign: 'center' }}>{cartItem.quantity}</span>
+                    <button onClick={() => {
+                      setCart(prev => prev.map(i => i.cartId === cartItem.cartId ? { ...i, quantity: i.quantity + 1 } : i));
+                    }} style={{ background: 'transparent', color: 'white', padding: '0.2rem' }}>
+                      <Plus size={14} />
+                    </button>
+                  </div>
                 </div>
               ))
             )}
