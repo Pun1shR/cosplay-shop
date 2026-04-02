@@ -84,6 +84,36 @@ export default function Page() {
 
   const cartTotal = cart.reduce((sum, item) => sum + item.price, 0).toFixed(2);
 
+  const handleCheckout = () => {
+    if (cart.length === 0) return;
+    
+    // Replace YOUR_WHATSAPP_NUMBER with your actual number WITH country code (e.g. 919876543210 for India)
+    const phoneNumber = "918355978568"; 
+    
+    let message = "Hello! I would like to place an order for:\n\n";
+    
+    // Group items by name to handle quantities nicely
+    const itemCounts = {};
+    cart.forEach(item => {
+      if (itemCounts[item.name]) {
+        itemCounts[item.name].quantity += 1;
+        itemCounts[item.name].total += item.price;
+      } else {
+        itemCounts[item.name] = { quantity: 1, price: item.price, total: item.price };
+      }
+    });
+
+    Object.keys(itemCounts).forEach(itemName => {
+      const { quantity, total } = itemCounts[itemName];
+      message += `${quantity}x ${itemName} = ₹${total}\n`;
+    });
+    
+    message += `\n*Total Amount:* ₹${cartTotal}`;
+    
+    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '2rem', display: 'flex', gap: '2rem' }}>
 
@@ -222,6 +252,7 @@ export default function Page() {
               className="button-primary"
               style={{ width: '100%', fontSize: '1.1rem', padding: '1rem' }}
               disabled={cart.length === 0}
+              onClick={handleCheckout}
             >
               Checkout Now
             </button>
